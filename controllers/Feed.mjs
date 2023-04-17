@@ -1,4 +1,5 @@
 import { validationResult } from "express-validator";
+import { PostModel } from "../models/FeedModel.mjs";
 
 const getPosts = (req, res, next) => {
   res.status(200).json({
@@ -23,24 +24,37 @@ const createPost = (req, res, next) => {
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
-    return res.status(422).json({
-      message: "Validation failed",
-      errors: errors.array(),
-    });
+    const error = new Error("Validation failed");
+    error.statusCode = 422;
+    throw error;
+
+    // return res.status(422).json({
+    //   message: "Validation failed",
+    //   errors: errors.array(),
+    // });
   }
 
-  res.status(201).json({
-    message: "Success to created post",
-    post: {
-      _id: new Date().toISOString(),
-      title: title,
-      content: content,
-      creator: {
-        name: "Adam Ananda Santoso",
-      },
-      createdAt: new Date(),
+  const post = new PostModel({
+    title: title,
+    imageUrl: "1",
+    content: content,
+    creator: {
+      name: "Adam Ananda Santoso",
     },
   });
+
+  post
+    .save()
+    .then((data) => {
+      res.status(201).json({
+        message: "Success to created post",
+        post: data,
+      });
+    })
+    .catch((error) => {
+      if (!error.statusCode) error.statusCode = 500;
+      next(error);
+    });
 };
 
 export { getPosts, createPost };
