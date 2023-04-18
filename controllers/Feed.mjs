@@ -3,9 +3,21 @@ import fs from "node:fs";
 import __dirname from "../utils/path.mjs";
 import { validationResult } from "express-validator";
 import { PostModel } from "../models/FeedModel.mjs";
+import { count } from "console";
 
 const getPosts = (req, res, next) => {
+  const currentPage = req.query.page || 1;
+  const perPage = 2;
+  let totalItems;
+
   PostModel.find()
+    .countDocuments()
+    .then((count) => {
+      totalItems = count;
+      return PostModel.find()
+        .skip((currentPage - 1) * perPage)
+        .limit(perPage);
+    })
     .then((posts) => {
       if (!posts) {
         const error = new Error("No posts was found!");
@@ -15,10 +27,11 @@ const getPosts = (req, res, next) => {
       res.status(200).json({
         message: "Fetched successfully",
         posts,
+        totalItems,
       });
     })
     .catch((error) => {
-      if (!error.statusCode) statusCode = 500;
+      if (!error.statusCode) error.statusCode = 500;
       next(error);
     });
 };
