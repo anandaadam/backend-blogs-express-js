@@ -1,3 +1,6 @@
+import path from "path";
+import fs from "node:fs";
+import __dirname from "../utils/path.mjs";
 import { validationResult } from "express-validator";
 import { PostModel } from "../models/FeedModel.mjs";
 
@@ -85,4 +88,64 @@ const getPost = (req, res, next) => {
     });
 };
 
-export { getPosts, createPost, getPost };
+const updatePost = (req, res, next) => {
+  const postId = req.params.postId;
+  const title = req.body.title;
+  const content = req.body.content;
+  let imageUrl = req.body.image;
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    const error = new Error("Validation failed");
+    error.statusCode = 422;
+    throw error;
+
+    // return res.status(422).json({
+    //   message: "Validation failed",
+    //   errors: errors.array(),
+    // });
+  }
+
+  if (req.file) {
+    // imageUrl = req.file.path;
+    imageUrl = req.file.path.replace("\\", "/");
+  }
+
+  if (!imageUrl) {
+    const error = new Error("No image");
+    error.statusCode = 422;
+    throw error;
+  }
+
+  PostModel.findById(postId)
+    .then((post) => {
+      if (!post) {
+        const error = new Error("No post found");
+        error.statusCode = 422;
+        throw error;
+      }
+
+      if (imageUrl !== post.imageUrl) clearImage(post.imageUrl);
+
+      post.title = title;
+      post.imageUrl = imageUrl;
+      post.content = content;
+      return post.save();
+    })
+    .then((result) => {
+      res.status(200).json({ message: "Post updatetd", post: result });
+    })
+    .catch((error) => {
+      if (!error.statusCode) error.statusCode = 500;
+      next(error);
+    });
+};
+
+const clearImage = (filePath) => {
+  filePath = path.join(__dirname, "../", filePath);
+  fs.unlink(filePath, (error) => {
+    console.log(error);
+  });
+};
+
+export { getPosts, createPost, getPost, updatePost };
