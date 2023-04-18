@@ -141,6 +141,30 @@ const updatePost = (req, res, next) => {
     });
 };
 
+const deletePost = (req, res, next) => {
+  const postId = req.params.postId;
+
+  PostModel.findById(postId)
+    .then((post) => {
+      if (!post) {
+        const error = new Error("No post found");
+        error.statusCode = 422;
+        throw error;
+      }
+
+      clearImage(post.imageUrl);
+      return PostModel.findByIdAndRemove(post._id);
+    })
+    .then((result) => {
+      console.log(result);
+      res.status(200).json({ message: "Post deleted" });
+    })
+    .catch((error) => {
+      if (!error.statusCode) error.statusCode = 500;
+      next(error);
+    });
+};
+
 const clearImage = (filePath) => {
   filePath = path.join(__dirname, "../", filePath);
   fs.unlink(filePath, (error) => {
@@ -148,4 +172,4 @@ const clearImage = (filePath) => {
   });
 };
 
-export { getPosts, createPost, getPost, updatePost };
+export { getPosts, createPost, getPost, updatePost, deletePost };
