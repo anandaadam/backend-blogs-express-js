@@ -23,6 +23,7 @@ const getPosts = (req, res, next) => {
 const createPost = (req, res, next) => {
   const title = req.body.title;
   const content = req.body.content;
+  const imageUrl = req.file.path.replace("\\", "/");
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
@@ -36,9 +37,15 @@ const createPost = (req, res, next) => {
     // });
   }
 
+  if (!req.file) {
+    const error = new Error("No image provided");
+    error.statusCode = 422;
+    throw error;
+  }
+
   const post = new PostModel({
     title: title,
-    imageUrl: "test.jpg",
+    imageUrl: imageUrl,
     content: content,
     creator: {
       name: "Adam Ananda Santoso",
