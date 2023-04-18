@@ -2,20 +2,22 @@ import { validationResult } from "express-validator";
 import { PostModel } from "../models/FeedModel.mjs";
 
 const getPosts = (req, res, next) => {
-  res.status(200).json({
-    posts: [
-      {
-        _id: "1",
-        title: "First Post",
-        content: "This is the first post!",
-        imageUrl: "images/duck.jpg",
-        creator: {
-          name: "Adam Ananda Santoso",
-        },
-        createdAt: new Date(),
-      },
-    ],
-  });
+  PostModel.find()
+    .then((posts) => {
+      if (!posts) {
+        const error = new Error("No posts was found!");
+        error.statusCode = 404;
+        throw error;
+      }
+      res.status(200).json({
+        message: "Fetched successfully",
+        posts,
+      });
+    })
+    .catch((error) => {
+      if (!error.statusCode) statusCode = 500;
+      next(error);
+    });
 };
 
 const createPost = (req, res, next) => {
@@ -36,7 +38,7 @@ const createPost = (req, res, next) => {
 
   const post = new PostModel({
     title: title,
-    imageUrl: "1",
+    imageUrl: "test.jpg",
     content: content,
     creator: {
       name: "Adam Ananda Santoso",
@@ -57,4 +59,23 @@ const createPost = (req, res, next) => {
     });
 };
 
-export { getPosts, createPost };
+const getPost = (req, res, next) => {
+  const postId = req.params.postId;
+  PostModel.findById(postId)
+    .then((post) => {
+      if (!post) {
+        const error = new Error("No post was found!");
+        error.statusCode = 404;
+        throw error;
+      }
+      console.log({ post });
+      console.log({ post: post });
+      res.status(200).json({ message: "Post fetched", post });
+    })
+    .catch((error) => {
+      if (!error.statusCode) error.statusCode = 500;
+      next(error);
+    });
+};
+
+export { getPosts, createPost, getPost };

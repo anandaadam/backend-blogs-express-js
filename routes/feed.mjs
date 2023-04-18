@@ -8,10 +8,11 @@ router.get("/posts", FeedController.getPosts);
 router.post(
   "/post",
   [
-    body("title").trim().isLength({ min: 7 }),
+    body("title").trim().isLength({ min: 5 }),
     body("content").trim().isLength({ min: 5 }),
   ],
   FeedController.createPost
 );
+router.get("/post/:postId", FeedController.getPost);
 
 export { router };
