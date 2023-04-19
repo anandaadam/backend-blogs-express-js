@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import multer from "multer";
 import { v4 as uuidv4 } from "uuid";
 import * as feedRoutes from "./routes/feed.mjs";
+import * as authRoutes from "./routes/auth.mjs";
 import __dirname from "./utils/path.mjs";
 
 const app = express();
@@ -46,13 +47,15 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use("/auth", authRoutes.router);
 app.use("/feed", feedRoutes.router);
 
 app.use((error, req, res, next) => {
   const statusCode = error.statusCode || 500;
   const message = error.message;
+  const data = error.data;
   console.log(error);
-  res.status(statusCode).json({ message });
+  res.status(statusCode).json({ message, data });
 });
 
 mongoose
