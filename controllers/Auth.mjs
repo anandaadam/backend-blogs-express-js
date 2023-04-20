@@ -23,7 +23,6 @@ const signup = (req, res, next) => {
         email: email,
         password: hashedPassword,
         name: name,
-        status: "New",
       });
 
       return user.save();
