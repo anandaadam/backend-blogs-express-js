@@ -3,6 +3,7 @@ import fs from "node:fs";
 import __dirname from "../utils/path.mjs";
 import { validationResult } from "express-validator";
 import { PostModel } from "../models/FeedModel.mjs";
+import { UserModel } from "../models/UserModel.mjs";
 import { count } from "console";
 
 const getPosts = (req, res, next) => {
@@ -24,6 +25,7 @@ const getPosts = (req, res, next) => {
         error.statusCode = 404;
         throw error;
       }
+      console.log({ posts });
       res.status(200).json({
         message: "Fetched successfully",
         posts,
@@ -41,6 +43,7 @@ const createPost = (req, res, next) => {
   const content = req.body.content;
   const imageUrl = req.file.path.replace("\\", "/");
   const errors = validationResult(req);
+  let creator;
 
   if (!errors.isEmpty()) {
     const error = new Error("Validation failed");
@@ -63,17 +66,24 @@ const createPost = (req, res, next) => {
     title: title,
     imageUrl: imageUrl,
     content: content,
-    creator: {
-      name: "Adam Ananda Santoso",
-    },
+    creator: req.userId,
   });
 
   post
     .save()
-    .then((data) => {
+    .then((result) => {
+      return UserModel.findById(req.userId);
+    })
+    .then((user) => {
+      creator = user;
+      user.posts.push(post);
+      return user.save();
+    })
+    .then((result) => {
       res.status(201).json({
         message: "Success to created post",
-        post: data,
+        post: post,
+        creator: { _id: creator._id, name: creator.name },
       });
     })
     .catch((error) => {
