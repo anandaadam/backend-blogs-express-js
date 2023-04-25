@@ -6,6 +6,7 @@ import multer from "multer";
 import { v4 as uuidv4 } from "uuid";
 import * as feedRoutes from "./routes/feed.mjs";
 import * as authRoutes from "./routes/auth.mjs";
+import * as statusRoutes from "./routes/status.mjs";
 import __dirname from "./utils/path.mjs";
 
 const app = express();
@@ -49,6 +50,7 @@ app.use((req, res, next) => {
 
 app.use("/auth", authRoutes.router);
 app.use("/feed", feedRoutes.router);
+app.use(statusRoutes.router);
 
 app.use((error, req, res, next) => {
   const statusCode = error.statusCode || 500;
