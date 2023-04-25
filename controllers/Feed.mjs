@@ -6,36 +6,32 @@ import { PostModel } from "../models/FeedModel.mjs";
 import { UserModel } from "../models/UserModel.mjs";
 import { count } from "console";
 
-const getPosts = (req, res, next) => {
+const getPosts = async (req, res, next) => {
   const currentPage = req.query.page || 1;
   const perPage = 2;
   let totalItems;
 
-  PostModel.find()
-    .countDocuments()
-    .then((count) => {
-      totalItems = count;
-      return PostModel.find()
-        .skip((currentPage - 1) * perPage)
-        .limit(perPage);
-    })
-    .then((posts) => {
-      if (!posts) {
-        const error = new Error("No posts was found!");
-        error.statusCode = 404;
-        throw error;
-      }
-      console.log({ posts });
-      res.status(200).json({
-        message: "Fetched successfully",
-        posts,
-        totalItems,
-      });
-    })
-    .catch((error) => {
-      if (!error.statusCode) error.statusCode = 500;
-      next(error);
+  try {
+    const postModel = await PostModel.find().countDocuments();
+    const posts = await PostModel.find()
+      .skip((currentPage - 1) * perPage)
+      .limit(perPage);
+
+    if (!posts) {
+      const error = new Error("No posts was found!");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    res.status(200).json({
+      message: "Fetched successfully",
+      posts,
+      totalItems,
     });
+  } catch (error) {
+    if (!error.statusCode) error.statusCode = 500;
+    next(error);
+  }
 };
 
 const createPost = (req, res, next) => {
