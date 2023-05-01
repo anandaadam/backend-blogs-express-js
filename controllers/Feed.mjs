@@ -45,11 +45,6 @@ const createPost = (req, res, next) => {
     const error = new Error("Validation failed");
     error.statusCode = 422;
     throw error;
-
-    // return res.status(422).json({
-    //   message: "Validation failed",
-    //   errors: errors.array(),
-    // });
   }
 
   if (!req.file) {
@@ -97,8 +92,6 @@ const getPost = (req, res, next) => {
         error.statusCode = 404;
         throw error;
       }
-      console.log({ post });
-      console.log({ post: post });
       res.status(200).json({ message: "Post fetched", post });
     })
     .catch((error) => {
