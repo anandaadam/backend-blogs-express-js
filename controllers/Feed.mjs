@@ -13,7 +13,9 @@ const getPosts = async (req, res, next) => {
 
   try {
     const postModel = await PostModel.find().countDocuments();
+    totalItems = postModel;
     const posts = await PostModel.find()
+      .populate("creator")
       .skip((currentPage - 1) * perPage)
       .limit(perPage);
 
