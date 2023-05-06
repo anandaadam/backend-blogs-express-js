@@ -34,7 +34,7 @@ const getPosts = async (req, res, next) => {
   }
 };
 
-const createPost = (req, res, next) => {
+const createPost = async (req, res, next) => {
   const title = req.body.title;
   const content = req.body.content;
   const imageUrl = req.file.path.replace("\\", "/");
@@ -46,7 +46,6 @@ const createPost = (req, res, next) => {
     error.statusCode = 422;
     throw error;
   }
-
   if (!req.file) {
     const error = new Error("No image provided");
     error.statusCode = 422;
@@ -60,47 +59,43 @@ const createPost = (req, res, next) => {
     creator: req.userId,
   });
 
-  post
-    .save()
-    .then((result) => {
-      return UserModel.findById(req.userId);
-    })
-    .then((user) => {
-      creator = user;
-      user.posts.push(post);
-      return user.save();
-    })
-    .then((result) => {
-      res.status(201).json({
-        message: "Success to created post",
-        post: post,
-        creator: { _id: creator._id, name: creator.name },
-      });
-    })
-    .catch((error) => {
-      if (!error.statusCode) error.statusCode = 500;
-      next(error);
+  try {
+    await post.save();
+    const user = await UserModel.findById(req.userId);
+
+    creator = user;
+    user.posts.push(post);
+
+    await user.save();
+    res.status(201).json({
+      message: "Success to created post",
+      post: post,
+      creator: { _id: creator._id, name: creator.name },
     });
+  } catch (error) {
+    if (!error.statusCode) error.statusCode = 500;
+    next(error);
+  }
 };
 
-const getPost = (req, res, next) => {
+const getPost = async (req, res, next) => {
   const postId = req.params.postId;
-  PostModel.findById(postId)
-    .then((post) => {
-      if (!post) {
-        const error = new Error("No post was found!");
-        error.statusCode = 404;
-        throw error;
-      }
-      res.status(200).json({ message: "Post fetched", post });
-    })
-    .catch((error) => {
-      if (!error.statusCode) error.statusCode = 500;
-      next(error);
-    });
+  try {
+    const post = await PostModel.findById(postId);
+    if (!post) {
+      const error = new Error("No post was found!");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    res.status(200).json({ message: "Post fetched", post });
+  } catch (error) {
+    if (!error.statusCode) error.statusCode = 500;
+    next(error);
+  }
 };
 
-const updatePost = (req, res, next) => {
+const updatePost = async (req, res, next) => {
   const postId = req.params.postId;
   const title = req.body.title;
   const content = req.body.content;
@@ -111,88 +106,70 @@ const updatePost = (req, res, next) => {
     const error = new Error("Validation failed");
     error.statusCode = 422;
     throw error;
-
-    // return res.status(422).json({
-    //   message: "Validation failed",
-    //   errors: errors.array(),
-    // });
   }
-
   if (req.file) {
-    // imageUrl = req.file.path;
     imageUrl = req.file.path.replace("\\", "/");
   }
-
   if (!imageUrl) {
     const error = new Error("No image");
     error.statusCode = 422;
     throw error;
   }
 
-  PostModel.findById(postId)
-    .then((post) => {
-      if (!post) {
-        const error = new Error("No post found");
-        error.statusCode = 422;
-        throw error;
-      }
+  try {
+    const post = await PostModel.findById(postId);
+    if (!post) {
+      const error = new Error("No post found");
+      error.statusCode = 422;
+      throw error;
+    }
+    if (post.creator.toString() !== req.userId) {
+      const error = new Error("No authorized");
+      error.statusCode = 403;
+      throw error;
+    }
+    if (imageUrl !== post.imageUrl) clearImage(post.imageUrl);
 
-      if (post.creator.toString() !== req.userId) {
-        const error = new Error("No authorized");
-        error.statusCode = 403;
-        throw error;
-      }
+    post.title = title;
+    post.imageUrl = imageUrl;
+    post.content = content;
 
-      if (imageUrl !== post.imageUrl) clearImage(post.imageUrl);
-
-      post.title = title;
-      post.imageUrl = imageUrl;
-      post.content = content;
-      return post.save();
-    })
-    .then((result) => {
-      res.status(200).json({ message: "Post updatetd", post: result });
-    })
-    .catch((error) => {
-      if (!error.statusCode) error.statusCode = 500;
-      next(error);
-    });
+    const postUpdate = await post.save();
+    res.status(200).json({ message: "Post updatetd", post: postUpdate });
+  } catch (error) {
+    if (!error.statusCode) error.statusCode = 500;
+    next(error);
+  }
 };
 
-const deletePost = (req, res, next) => {
+const deletePost = async (req, res, next) => {
   const postId = req.params.postId;
 
-  PostModel.findById(postId)
-    .then((post) => {
-      if (!post) {
-        const error = new Error("No post found");
-        error.statusCode = 422;
-        throw error;
-      }
+  try {
+    const post = await PostModel.findById(postId);
+    if (!post) {
+      const error = new Error("No post found");
+      error.statusCode = 422;
+      throw error;
+    }
+    if (post.creator.toString() !== req.userId) {
+      const error = new Error("No authorized");
+      error.statusCode = 403;
+      throw error;
+    }
+    clearImage(post.imageUrl);
 
-      if (post.creator.toString() !== req.userId) {
-        const error = new Error("No authorized");
-        error.statusCode = 403;
-        throw error;
-      }
+    await PostModel.findByIdAndRemove(postId);
+    const user = await UserModel.findById(req.userId);
 
-      clearImage(post.imageUrl);
-      return PostModel.findByIdAndRemove(postId);
-    })
-    .then((result) => {
-      return UserModel.findById(req.userId);
-    })
-    .then((user) => {
-      user.posts.pull(postId);
-      return user.save();
-    })
-    .then((result) => {
-      res.status(200).json({ message: "Post deleted" });
-    })
-    .catch((error) => {
-      if (!error.statusCode) error.statusCode = 500;
-      next(error);
-    });
+    user.posts.pull(postId);
+    await user.save();
+
+    res.status(200).json({ message: "Post deleted" });
+  } catch (error) {
+    if (!error.statusCode) error.statusCode = 500;
+    next(error);
+  }
 };
 
 const clearImage = (filePath) => {
