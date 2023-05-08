@@ -1,10 +1,11 @@
 import path from "path";
 import fs from "node:fs";
 import __dirname from "../utils/path.mjs";
-import { validationResult } from "express-validator";
+import { Result, validationResult } from "express-validator";
 import { PostModel } from "../models/FeedModel.mjs";
 import { UserModel } from "../models/UserModel.mjs";
 import { count } from "console";
+import socket from "../socket.mjs";
 
 const getPosts = async (req, res, next) => {
   const currentPage = req.query.page || 1;
@@ -69,6 +70,12 @@ const createPost = async (req, res, next) => {
     user.posts.push(post);
 
     await user.save();
+
+    socket.getIO().emit("posts", {
+      action: "create",
+      post: { ...post._doc, creator: { _id: req.userId, name: user.name } },
+    });
+    console.log({ ...post._doc });
     res.status(201).json({
       message: "Success to created post",
       post: post,
@@ -119,13 +126,13 @@ const updatePost = async (req, res, next) => {
   }
 
   try {
-    const post = await PostModel.findById(postId);
+    const post = await PostModel.findById(postId).populate("creator");
     if (!post) {
       const error = new Error("No post found");
       error.statusCode = 422;
       throw error;
     }
-    if (post.creator.toString() !== req.userId) {
+    if (post.creator._id.toString() !== req.userId) {
       const error = new Error("No authorized");
       error.statusCode = 403;
       throw error;
@@ -137,6 +144,7 @@ const updatePost = async (req, res, next) => {
     post.content = content;
 
     const postUpdate = await post.save();
+    socket.getIO().emit("posts", { action: "update", post: postUpdate });
     res.status(200).json({ message: "Post updatetd", post: postUpdate });
   } catch (error) {
     if (!error.statusCode) error.statusCode = 500;
@@ -167,6 +175,7 @@ const deletePost = async (req, res, next) => {
     user.posts.pull(postId);
     await user.save();
 
+    socket.getIO().emit("posts", { action: "delete", post: postId });
     res.status(200).json({ message: "Post deleted" });
   } catch (error) {
     if (!error.statusCode) error.statusCode = 500;

@@ -3,10 +3,12 @@ import express from "express";
 import bodyParser from "body-parser";
 import mongoose from "mongoose";
 import multer from "multer";
+import { Server } from "socket.io";
 import { v4 as uuidv4 } from "uuid";
 import * as feedRoutes from "./routes/feed.mjs";
 import * as authRoutes from "./routes/auth.mjs";
 import * as statusRoutes from "./routes/status.mjs";
+import socket from "./socket.mjs";
 import __dirname from "./utils/path.mjs";
 
 const app = express();
@@ -64,5 +66,17 @@ mongoose
   .connect(
     "mongodb://adam:Pknqsx123.@ac-4st63nd-shard-00-00.myiaxw1.mongodb.net:27017,ac-4st63nd-shard-00-01.myiaxw1.mongodb.net:27017,ac-4st63nd-shard-00-02.myiaxw1.mongodb.net:27017/blogs?replicaSet=atlas-10elfg-shard-0&ssl=true&authSource=admin"
   )
-  .then((result) => app.listen(3001))
+  .then((result) => {
+    const server = app.listen(3001);
+    // const io = new Server(server, {
+    //   cors: {
+    //     origin: "http://localhost:3000",
+    //     methods: ["GET", "POST"],
+    //   },
+    // });
+    const io = socket.init(server);
+    io.on("connection", (socket) => {
+      console.log("Client connected");
+    });
+  })
   .catch((error) => console.log(error));
