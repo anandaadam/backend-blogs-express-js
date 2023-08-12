@@ -69,7 +69,7 @@ const createPost = async (req, res, next) => {
     creator = user;
     user.posts.push(post);
 
-    await user.save();
+    const savedUser = await user.save();
 
     socket.getIO().emit("posts", {
       action: "create",
@@ -81,6 +81,8 @@ const createPost = async (req, res, next) => {
       post: post,
       creator: { _id: creator._id, name: creator.name },
     });
+
+    return savedUser;
   } catch (error) {
     if (!error.statusCode) error.statusCode = 500;
     next(error);
